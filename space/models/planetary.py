@@ -577,8 +577,8 @@ def find_normal_from_tangents(tth, tph):
 
 
 def mp_sibeck1991_tangents(theta, phi, **kwargs):
-    theta = su.listify(theta)
-    phi = su.listify(phi)
+    theta = listify(theta)
+    phi = listify(phi)
     Pd = kwargs.get("Pd", 2.056)
     if (Pd >= 0.54) and (Pd < 0.87):
         a0 = 0.19
@@ -640,8 +640,8 @@ def mp_sibeck1991_normal(theta, phi, **kwargs):
 
 
 def mp_shue1998_tangents(theta, phi, **kwargs):
-    theta = su.listify(theta)
-    phi = su.listify(phi)
+    theta = listify(theta)
+    phi = listify(phi)
     Pd = kwargs.get("Pd", 2.056)
     Bz = kwargs.get("Bz", -0.001)
 
@@ -654,8 +654,8 @@ def mp_shue1998_tangents(theta, phi, **kwargs):
 
 
 def bs_jelinek2012_tangents(theta, phi, **kwargs):
-    theta = su.listify(theta)
-    phi = su.listify(phi)
+    theta = listify(theta)
+    phi = listify(phi)
     lamb = 1.17
     R = 15.02
     epsilon = 6.55
