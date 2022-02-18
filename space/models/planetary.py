@@ -501,14 +501,48 @@ def mp_nguyen2020(theta, phi, **kwargs):
     return coords.choice_coordinate_system(r, theta, phi, **kwargs)
 
 
-def mp_shue1998_tangents(theta, phi, **kwargs):
-    Pd = kwargs.get("Pd", 2.056)
-    Bz = kwargs.get("Bz", -0.001)
+def mp_sibeck1991(theta, phi, **kwargs):
+    Pd = kwargs.get('Pd', 2.056)
+    if (Pd >= 0.54) and (Pd < 0.87):
+        a0 = 0.19
+        b0 = 19.3
+        c0 = -272.4
+        p0 = 0.71
+    elif (Pd >= 0.87) and (Pd < 1.47):
+        a0 = 0.19
+        b0 = 18.7
+        c0 = -243.9
+        p0 = 1.17
+    elif (Pd >= 1.47) and (Pd < 2.60):
+        a0 = 0.14
+        b0 = 18.2
+        c0 = -217.2
+        p0 = 2.04
+    elif (Pd >= 2.60) and (Pd < 4.90):
+        a0 = 0.15
+        b0 = 17.3
+        c0 = -187.4
+        p0 = 3.75
+    elif (Pd >= 4.90) and (Pd < 9.90):
+        a0 = 0.18
+        b0 = 14.2
+        c0 = -139.2
+        p0 = 7.4
 
-    r0 = (10.22 + 1.29 * np.tanh(0.184 * (Bz + 8.14))) * Pd ** (-1. / 6.6)
-    a = (0.58 - 0.007 * Bz) * (1 + 0.024 * np.log(Pd))
-    r = r0 * (2. / (1 + np.cos(theta))) ** a
-    drdt = r0 * a * (2 ** a) * np.sin(theta) / (1 + np.cos(theta)) ** (a + 1)
+    else:
+        raise ('Dynamic pressure none valid')
+
+    a = a0 * np.cos(theta) ** 2 + np.sin(theta) ** 2
+    b = b0 * np.cos(theta) * (p0 / Pd) ** (1 / 6)
+    c = c0 * (p0 / Pd) ** (1 / 3)
+
+    r = resolve_poly2_real_roots(a, b, c)[0]
+
+    return coords.choice_coordinate_system(r, theta, phi, **kwargs)
+
+
+
+def derivative_spherical_to_cartesian(r, theta, phi, drdt, drdp):
     dxdt = drdt * np.cos(theta) - r * np.sin(theta)
     dydt = drdt * np.sin(theta) * np.sin(phi) + r * np.cos(theta) * np.sin(phi)
     dzdt = drdt * np.sin(theta) * np.cos(phi) + r * np.cos(theta) * np.cos(phi)
@@ -517,8 +551,8 @@ def mp_shue1998_tangents(theta, phi, **kwargs):
     normt[normt == 0] = 1
 
     dxdp = 0
-    dydp = r * np.sin(theta) * np.cos(phi)
-    dzdp = -r * np.sin(theta) * np.sin(phi)
+    dydp = drdp * np.sin(theta) * np.sin(phi) + r * np.sin(theta) * np.cos(phi)
+    dzdp = drdp * np.sin(theta) * np.cos(phi) - r * np.sin(theta) * np.sin(phi)
 
     normp = mnorm(dxdp, dydp, dzdp)
     normp[normp == 0] = 1
@@ -526,7 +560,102 @@ def mp_shue1998_tangents(theta, phi, **kwargs):
     return [dxdt / normt, dydt / normt, dzdt / normt], [dxdp / normp, dydp / normp, dzdp / normp]
 
 
+def find_normal_from_tangents(tth, tph):
+    [dxdt, dydt, dzdt], [dxdp, dydp, dzdp] = tth, tph
+    pvx = dzdt * dydp - dydt * dzdp
+    pvy = dxdt * dzdp - dzdt * dxdp
+    pvz = dydt * dxdp - dxdt * dydp
+
+    norm = mnorm(pvx, pvy, pvz)
+
+    pvx[norm == 0] = 1
+    norm[norm == 0] = 1
+
+    return (pvx / norm, pvy / norm, pvz / norm)
+
+
+
+
+def mp_sibeck1991_tangents(theta, phi, **kwargs):
+    theta = su.listify(theta)
+    phi = su.listify(phi)
+    Pd = kwargs.get("Pd", 2.056)
+    if (Pd >= 0.54) and (Pd < 0.87):
+        a0 = 0.19
+        b0 = 19.3
+        c0 = -272.4
+        p0 = 0.71
+    elif (Pd >= 0.87) and (Pd < 1.47):
+        a0 = 0.19
+        b0 = 18.7
+        c0 = -243.9
+        p0 = 1.17
+    elif (Pd >= 1.47) and (Pd < 2.60):
+        a0 = 0.14
+        b0 = 18.2
+        c0 = -217.2
+        p0 = 2.04
+    elif (Pd >= 2.60) and (Pd < 4.90):
+        a0 = 0.15
+        b0 = 17.3
+        c0 = -187.4
+        p0 = 3.75
+    elif (Pd >= 4.90) and (Pd < 9.90):
+        a0 = 0.18
+        b0 = 14.2
+        c0 = -139.2
+        p0 = 7.4
+
+    else:
+        raise ('Dynamic pressure none valid')
+
+    a = a0 * np.cos(theta) ** 2 + np.sin(theta) ** 2
+    dadt = 2 * np.cos(theta) * np.sin(theta) * (1 - a0)
+
+    b = b0 * np.cos(theta) * (p0 / Pd) ** (1 / 6)
+    dbdt = -b0 * np.sin(theta) * (p0 / Pd) ** (1 / 6)
+
+    c = c0 * (p0 / Pd) ** (1 / 3)
+    dcdt = 0
+
+    delta = b ** 2 - 4 * a * c
+    ddeltadt = 2 * b * dbdt - 4 * dadt * c
+
+    u = -b + np.sqrt(delta)
+    dudt = -dbdt + ddeltadt / (2 * np.sqrt(delta))
+
+    v = 2 * a
+    dvdt = 2 * dadt
+
+    r = resolve_poly2_real_roots(a, b, c)[0]
+    drdt = (dudt * v - dvdt * u) / v ** 2
+    drdp = 0
+
+    return derivative_spherical_to_cartesian(r, theta, phi, drdt, drdp)
+
+
+def mp_sibeck1991_normal(theta, phi, **kwargs):
+    tth, tph = mp_sibeck1991_tangents(theta, phi, **kwargs)
+    return find_normal_from_tangents(tth, tph)
+
+
+def mp_shue1998_tangents(theta, phi, **kwargs):
+    theta = su.listify(theta)
+    phi = su.listify(phi)
+    Pd = kwargs.get("Pd", 2.056)
+    Bz = kwargs.get("Bz", -0.001)
+
+    r0 = (10.22 + 1.29 * np.tanh(0.184 * (Bz + 8.14))) * Pd ** (-1. / 6.6)
+    a = (0.58 - 0.007 * Bz) * (1 + 0.024 * np.log(Pd))
+    r = r0 * (2. / (1 + np.cos(theta))) ** a
+    drdt = r0 * a * (2 ** a) * np.sin(theta) / (1 + np.cos(theta)) ** (a + 1)
+    drdp = 0
+    return derivative_spherical_to_cartesian(r, theta, phi, drdt, drdp)
+
+
 def bs_jelinek2012_tangents(theta, phi, **kwargs):
+    theta = su.listify(theta)
+    phi = su.listify(phi)
     lamb = 1.17
     R = 15.02
     epsilon = 6.55
@@ -535,8 +664,8 @@ def bs_jelinek2012_tangents(theta, phi, **kwargs):
     R0 = 2 * R * Pd ** (-1 / epsilon)
     r = R0 / (np.cos(theta) + np.sqrt(np.cos(theta) ** 2 + (lamb * np.sin(theta)) ** 2))
     test = R0 * np.sin(theta) * (
-            np.cos(theta) * (1 - lamb ** 2) / np.sqrt(np.cos(theta) ** 2 + (lamb * np.sin(theta)) ** 2)) / (
-                   np.cos(theta) + np.sqrt(np.cos(theta) ** 2 + (lamb * np.sin(theta)) ** 2)) ** 2
+        np.cos(theta) * (1 - lamb ** 2) / np.sqrt(np.cos(theta) ** 2 + (lamb * np.sin(theta)) ** 2)) / (
+               np.cos(theta) + np.sqrt(np.cos(theta) ** 2 + (lamb * np.sin(theta)) ** 2)) ** 2
 
     u0 = R0
     v0 = np.cos(theta) + np.sqrt(np.cos(theta) ** 2 + (lamb * np.sin(theta)) ** 2)
@@ -544,51 +673,19 @@ def bs_jelinek2012_tangents(theta, phi, **kwargs):
         np.cos(theta) ** 2 + (lamb * np.sin(theta)) ** 2)
 
     drdt = -u0 * v0p / v0 ** 2
+    drdp = 0
 
-    dxdt = drdt * np.cos(theta) - r * np.sin(theta)
-    dydt = drdt * np.sin(theta) * np.sin(phi) + r * np.cos(theta) * np.sin(phi)
-    dzdt = drdt * np.sin(theta) * np.cos(phi) + r * np.cos(theta) * np.cos(phi)
-
-    normt = mnorm(dxdt, dydt, dzdt)
-    normt[normt == 0] = 1
-
-    dxdp = 0
-    dydp = r * np.sin(theta) * np.cos(phi)
-    dzdp = -r * np.sin(theta) * np.sin(phi)
-
-    normp = mnorm(dxdp, dydp, dzdp)
-    normp[normp == 0] = 1
-
-    return [dxdt / normt, dydt / normt, dzdt / normt], [dxdp / normp, dydp / normp, dzdp / normp]
+    return derivative_spherical_to_cartesian(r, theta, phi, drdt, drdp)
 
 
 def mp_shue1998_normal(theta, phi, **kwargs):
-    [dxdt, dydt, dzdt], [dxdp, dydp, dzdp] = mp_shue1998_tangents(theta, phi, **kwargs)
-
-    pvx = dzdt * dydp - dydt * dzdp
-    pvy = dxdt * dzdp - dzdt * dxdp
-    pvz = dydt * dxdp - dxdt * dydp
-
-    norm = mnorm(pvx, pvy, pvz)
-
-    pvx[norm == 0] = 1
-    norm[norm == 0] = 1
-
-    return (pvx / norm, pvy / norm, pvz / norm)
+    tth, tph = mp_shue1998_tangents(theta, phi, **kwargs)
+    return find_normal_from_tangents(tth, tph)
 
 
 def bs_jelinek2012_normal(theta, phi, **kwargs):
-    [dxdt, dydt, dzdt], [dxdp, dydp, dzdp] = bs_jelinek2012_tangents(theta, phi, **kwargs)
-    pvx = dzdt * dydp - dydt * dzdp
-    pvy = dxdt * dzdp - dzdt * dxdp
-    pvz = dydt * dxdp - dxdt * dydp
-
-    norm = mnorm(pvx, pvy, pvz)
-
-    pvx[norm == 0] = 1
-    norm[norm == 0] = 1
-
-    return (pvx / norm, pvy / norm, pvz / norm)
+    tth, tph = bs_jelinek2012_tangents(theta, phi, **kwargs)
+    return find_normal_from_tangents(tth, tph)
 
 
 _models = { "mp_shue1998": mp_shue1998,
@@ -598,10 +695,13 @@ _models = { "mp_shue1998": mp_shue1998,
             "mp_jelinek2012" : mp_jelinek2012,
             "mp_lin2010" : mp_lin2010,
             "mp_nguyen2020" : mp_nguyen2020,
+            "mp_sibeck1991" = mp_sibeck1991,
             "bs_formisano1979": bs_formisano1979,
             "bs_jerab2005": bs_Jerab2005,
             "bs_jelinek2012": bs_jelinek2012}
+
 _tangents = {"mp_shue1998" : mp_shue1998_tangents,
+            "mp_sibeck1991" = mp_sibeck1991_tangents,
              "bs_jelinek2012" : bs_jelinek2012_tangents,
             "mp_shue1997": None,
              "mp_formisano1979": None,
@@ -613,7 +713,8 @@ _tangents = {"mp_shue1998" : mp_shue1998_tangents,
              "bs_jerab2005": None}
 
 _normal = {"mp_shue1998" : mp_shue1998_normal,
-             "bs_jelinek2012" : bs_jelinek2012_normal,
+            "mp_sibeck1991" = mp_sibeck1991_normal,
+            "bs_jelinek2012" : bs_jelinek2012_normal,
             "mp_shue1997": None,
            "mp_formisano1979": None,
            "mp_liu2015": None,
