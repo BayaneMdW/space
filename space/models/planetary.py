@@ -743,11 +743,11 @@ def _interest_points(model, **kwargs):
     xf = x - y ** 2 / (4 * x)
     return x, y, xf
 
-def _parabolic_approx(theta, phi, x, xf, **kwargs): # x= nose boundary , xf= focal point
-    K = x - xf
+def _parabolic_approx(theta, phi, x0, xf, **kwargs): # x0= nose boundary , xf= focal point
+    K = x0 - xf
     a = np.sin(theta) ** 2
     b = 4 * K * np.cos(theta)
-    c = -4 * K * x
+    c = -4 * K * x0
     r = resolve_poly2_real_roots(a, b, c)[0]
     return coords.choice_coordinate_system(r, theta, phi, **kwargs)
 
