@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 
+import sys
+
 sys.path.append('.')
 from ..smath import norm as mnorm
 
