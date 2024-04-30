@@ -22,6 +22,34 @@ def same_index(a,b):
     b = index_isin(b,a)
     return a,b
 
-def eliminateNoneValidValues(df):
+def eliminate_none_valid_values(df):
     return df.replace([np.inf, -np.inf], np.nan).dropna()
 
+def add_columns_to_df(dataframe,var,name):
+    df = dataframe.copy()
+    for n,v in zip(name,var):
+        df[n]=v
+    return df
+
+def select_data_with_condition(data,cond):
+    if isinstance(data, list):
+        return [d[cond] for d in data]
+    else :
+        return data[cond]
+
+
+def make_center_bins(vec, dd = 1):
+    if isinstance(arg, list):
+        if dd== 1 :
+            return [0.5*(v[1:]+v[:-1]) for v in vec]
+        elif dd==2 :
+            return [0.5*(v[1:,1:]+v[:-1,:-1]) for v in vec]
+        elif dd==3 :
+            return [0.5*(v[1:,1:,1:]+v[:-1,:-1,:-1]) for v in vec]
+    else:
+        if dd== 1 :
+            return 0.5*(vec[1:]+vec[:-1])
+        elif dd==2 :
+            return 0.5*(vec[1:,1:]+vec[:-1,:-1]) 
+        elif dd==3 :
+            return 0.5*(vec[1:,1:,1:]+vec[:-1,:-1,:-1])

@@ -4,6 +4,17 @@ import pandas as pd
 def norm(u, v, w):
     return np.sqrt(u**2 + v**2 + w**2)
 
+def resolve_poly1(a, b, epsilon=1e-7):
+    if isinstance(a, np.ndarray) | isinstance(a, pd.Series):
+        b = np.ones_like(a) * b
+        r = np.zeros_like(a)
+        r[(abs(a) >= epsilon)] = -b[ (abs(a) >= epsilon)] / a[ (abs(a) >= epsilon)]
+    else :
+        if abs(a) >= epsilon :
+            r=-b/a
+        else :
+            r=0
+    return r
 
 def resolve_poly2(a, b, c):
     if isinstance(a, np.ndarray )  | isinstance(a,pd.Series):
